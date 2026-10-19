@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+tensorflow
+opencv-python
+numpy
+scikit-learn
+python-jose[cryptography]
+passlib[bcrypt]
