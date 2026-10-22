@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-sqlalchemy
+SQLAlchemy>=2.0,<3.0
+psycopg2-binary>=2.9,<3.0
 tensorflow
 opencv-python
 numpy
