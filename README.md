@@ -16,8 +16,15 @@ _To be decided._
 If you are working on the Python backend, run these commands in your terminal:
 1. `cd backend`
 2. `pip install -r requirements.txt` (This installs FastAPI, TensorFlow, and scikit-learn)
-3. Test the CNN code: `python app/services/cnn_service.py`
-4. Test the Similarity Matcher: `python app/services/matcher.py`
+3. Set `JWT_SECRET_KEY` to a private, random value before starting the API. In PowerShell, generate and set one with `$env:JWT_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"`. Do not commit the secret.
+4. Start the API with `python -m uvicorn app.main:app --reload`. The API docs are available at `http://localhost:8000/docs`.
+5. The default SQLite database is created at `backend/users.db`. Set `DATABASE_URL` to use a different database.
+6. Run the authentication endpoint tests with `python -m unittest discover -s tests -v`.
+
+### Authentication endpoints
+- `POST /api/auth/register` accepts `email` and `password` as JSON or URL-encoded form fields and creates an account.
+- `POST /api/auth/login` accepts the same fields and returns a 30-minute JWT access token.
+- Email addresses are normalized to lowercase. Passwords are stored as bcrypt hashes, never as plaintext.
 
 ## 🤝 Contributing
 1. Create a branch: `git checkout -b feature/your-feature`
