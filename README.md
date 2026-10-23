@@ -22,7 +22,7 @@ If you are working on the Python backend, run these commands in your terminal:
 6. Run the authentication endpoint tests with `python -m unittest discover -s tests -v`.
 
 ### Authentication endpoints
-- `POST /api/auth/register` accepts `{"email": "user@example.com", "password": "at-least-8-characters"}` and creates an account.
+- `POST /api/auth/register` accepts `email` and `password` as JSON or URL-encoded form fields and creates an account.
 - `POST /api/auth/login` accepts the same fields and returns a 30-minute JWT access token.
 - Email addresses are normalized to lowercase. Passwords are stored as bcrypt hashes, never as plaintext.
 

@@ -37,6 +37,15 @@ class AuthEndpointTests(unittest.TestCase):
                 self.fail("Registered user was not saved")
             self.assertNotEqual(user.password_hash, "safe-password")
 
+    def test_register_accepts_url_encoded_form_data(self) -> None:
+        response = self.client.post(
+            "/api/auth/register",
+            data={"email": "person@example.com", "password": "safe-password"},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["email"], "person@example.com")
+
     def test_register_rejects_duplicate_email(self) -> None:
         payload = {"email": "person@example.com", "password": "safe-password"}
         self.client.post("/api/auth/register", json=payload)
@@ -60,6 +69,16 @@ class AuthEndpointTests(unittest.TestCase):
         )
         self.assertEqual(claims["sub"], "1")
         self.assertIn("exp", claims)
+
+    def test_login_accepts_url_encoded_form_data(self) -> None:
+        payload = {"email": "person@example.com", "password": "safe-password"}
+        self.client.post("/api/auth/register", json=payload)
+
+        response = self.client.post("/api/auth/login", data=payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["token_type"], "bearer")
+        self.assertTrue(response.json()["access_token"])
 
     def test_login_rejects_incorrect_password(self) -> None:
         self.client.post(
@@ -86,6 +105,23 @@ class AuthEndpointTests(unittest.TestCase):
 
         self.assertEqual(invalid_email.status_code, 422)
         self.assertEqual(short_password.status_code, 422)
+
+    def test_auth_endpoints_reject_unsupported_media_types(self) -> None:
+        response = self.client.post(
+            "/api/auth/register",
+            content="email=person%40example.com&password=safe-password",
+            headers={"Content-Type": "text/plain"},
+        )
+
+        self.assertEqual(response.status_code, 415)
+
+    def test_openapi_documents_json_and_form_request_bodies(self) -> None:
+        response = self.client.get("/openapi.json")
+
+        self.assertEqual(response.status_code, 200)
+        content = response.json()["paths"]["/api/auth/register"]["post"]["requestBody"]["content"]
+        self.assertIn("application/json", content)
+        self.assertIn("application/x-www-form-urlencoded", content)
 
 
 if __name__ == "__main__":
