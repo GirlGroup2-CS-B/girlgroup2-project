@@ -1,15 +1,47 @@
 # Backend database setup
 
-The backend uses PostgreSQL. Set `DATABASE_URL` in the VS Code PowerShell
-terminal before running the initializer. Replace `YOUR_PASSWORD` with your
-PostgreSQL password:
+The backend uses PostgreSQL. To configure a local connection from VS Code:
 
-```powershell
-$env:DATABASE_URL = "postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/campusfind"
-python init_db.py
-```
+1. In the VS Code PowerShell terminal, change to the backend folder:
 
-Install dependencies first with `python -m pip install -r requirements.txt`.
-The PostgreSQL server, `campusfind` database, and `lostfound` schema must already
-exist. The initializer creates any missing backend model tables in that schema.
-URL-encode reserved characters in the password, such as `@`, `/`, or `:`.
+   ```powershell
+   cd backend
+   ```
+
+2. Create a private environment file and edit it:
+
+   ```powershell
+   Copy-Item .env.example .env
+   code .env
+   ```
+
+   Update `DATABASE_URL` with the username, password, host, port, and database
+   name for your local PostgreSQL instance. The example uses `localhost:5432`
+   and a database named `campusfind`. Keep `.env` private; Git ignores it.
+   URL-encode reserved characters in the password, such as `@`, `/`, or `:`.
+
+3. Install the backend dependencies:
+
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
+
+4. Test the connection from the backend folder:
+
+   ```powershell
+   python -c "from sqlalchemy import text; from app.models.database import engine; connection = engine.connect(); print(connection.execute(text('SELECT 1')).scalar()); connection.close()"
+   ```
+
+   A successful connection prints `1`. Start the API with
+   `uvicorn app.main:app --reload`.
+
+The backend ORM now uses the CampusFind tables in the `"user"` schema:
+`users`, `item_reports`, `claims`, `notifications`, `image_searches`, and
+`image_search_matches`. Lost and Found reports are represented by a single
+`item_reports` table with a `report_type`; the old separate Lost/Found models
+have been removed.
+
+To initialize tables from the backend models, run `python init_db.py`. For the
+full CampusFind database setup, including views and triggers, execute the
+repository's `campusfind` SQL script against the `campusfind` database using
+your PostgreSQL client. Neither setup drops or deletes existing tables/data.
