@@ -45,3 +45,18 @@ To initialize tables from the backend models, run `python init_db.py`. For the
 full CampusFind database setup, including views and triggers, execute the
 repository's `campusfind` SQL script against the `campusfind` database using
 your PostgreSQL client. Neither setup drops or deletes existing tables/data.
+
+## SQLite user-table setup
+
+The SQLite setup is separate from the PostgreSQL backend. To create
+`backend/campusfind.db` and its `users` table, run this from the `backend`
+directory:
+
+```powershell
+python -m pip install -r requirements.txt
+python init_sqlite_db.py
+```
+
+The SQLite model is in `app/models/sqlite_user.py`. Its password field stores
+a password hash, not a plaintext password. The SQLite database file is ignored
+by Git.
