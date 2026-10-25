@@ -60,3 +60,9 @@ python init_sqlite_db.py
 The SQLite model is in `app/models/sqlite_user.py`. Its password field stores
 a password hash, not a plaintext password. The SQLite database file is ignored
 by Git.
+
+Lost and found reports use the database's existing `items` table, with
+`item_type` distinguishing each report. The model in
+`app/models/item_report.py` also defines the matching `categories` and
+`locations` tables. Reports retain the database's `date_lost_found`, `image`
+(image path), `location_id`, `category_id`, and `user_id` columns.

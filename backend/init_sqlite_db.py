@@ -1,9 +1,10 @@
-from app.models.sqlite_database import DATABASE_PATH, engine
-from app.models.sqlite_user import User
+import app.models.item_report as _item_report_models
+import app.models.sqlite_user as _sqlite_user_models
+from app.models.sqlite_database import Base, DATABASE_PATH, engine
 
 
 def init_db() -> None:
-    User.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
 
 if __name__ == "__main__":
