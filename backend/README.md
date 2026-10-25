@@ -66,3 +66,12 @@ Lost and found reports use the database's existing `items` table, with
 `app/models/item_report.py` also defines the matching `categories` and
 `locations` tables. Reports retain the database's `date_lost_found`, `image`
 (image path), `location_id`, `category_id`, and `user_id` columns.
+
+## Search and category filter
+
+`app/queries.py` provides `search_items(session, keyword)` and
+`filter_items_by_category(session, category_name)`. Keyword search checks item
+titles, descriptions, contact information, category names, and location names.
+Category filtering matches the exact category name used in the database.
+Results are ordered by lost/found date, newest first. A blank search or
+category returns no results.

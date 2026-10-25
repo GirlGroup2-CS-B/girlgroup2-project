@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .sqlite_database import Base
@@ -30,6 +30,9 @@ class Location(Base):
 
 class ItemReport(Base):
     __tablename__ = "items"
+    __table_args__ = (
+        Index("ix_items_category_date_lost_found", "category_id", "date_lost_found"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
