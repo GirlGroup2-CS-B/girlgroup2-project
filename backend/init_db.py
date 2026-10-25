@@ -1,4 +1,4 @@
-from app.models import Base, User, engine
+from app.models import Base, engine
 
 
 def init_db() -> None:
@@ -7,3 +7,4 @@ def init_db() -> None:
 
 if __name__ == "__main__":
     init_db()
+    print("PostgreSQL database initialized.")
