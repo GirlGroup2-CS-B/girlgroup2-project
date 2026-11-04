@@ -8,9 +8,10 @@ from unittest.mock import patch
 os.environ["DATABASE_URL"] = "sqlite://"
 
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import create_engine, delete, inspect, select, text
 
 from app.controllers import items
+from app import database
 from app.database import SessionLocal
 from app.main import app
 from app.models import FoundItem, LostItem
@@ -147,6 +148,81 @@ class ItemUploadEndpointTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 422)
+
+    def test_delete_marks_item_deleted_and_excludes_it_from_main_feed(self) -> None:
+        with SessionLocal() as db:
+            item = LostItem(
+                title="Blue water bottle",
+                description="Left near the library",
+                location="Library",
+                date_reported=datetime.now(timezone.utc),
+                image_path="uploads/bottle.png",
+            )
+            db.add(item)
+            db.commit()
+            item_id = item.id
+
+        response = self.client.delete(f"/api/items/lost/{item_id}")
+
+        self.assertEqual(response.status_code, 204)
+        with SessionLocal() as db:
+            item = db.get(LostItem, item_id)
+            if item is None:
+                self.fail("Soft-deleted item was physically removed")
+            self.assertTrue(item.is_deleted)
+        self.assertEqual(self.client.get("/api/items/feed").json(), [])
+
+    def test_main_feed_returns_only_active_lost_and_found_items(self) -> None:
+        with SessionLocal() as db:
+            db.add_all(
+                [
+                    LostItem(
+                        title="Active lost item",
+                        description="Active",
+                        location="Library",
+                        date_reported=datetime(2026, 10, 24, tzinfo=timezone.utc),
+                        image_path="uploads/lost.png",
+                    ),
+                    FoundItem(
+                        title="Deleted found item",
+                        description="Deleted",
+                        location="Cafeteria",
+                        date_reported=datetime(2026, 10, 25, tzinfo=timezone.utc),
+                        image_path="uploads/found.png",
+                        is_deleted=True,
+                    ),
+                ]
+            )
+            db.commit()
+
+        response = self.client.get("/api/items/feed")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["title"], "Active lost item")
+        self.assertEqual(payload[0]["item_type"], "lost")
+
+    def test_existing_item_tables_receive_soft_delete_columns(self) -> None:
+        legacy_engine = create_engine("sqlite://")
+        self.addCleanup(legacy_engine.dispose)
+        with legacy_engine.begin() as connection:
+            connection.execute(text("CREATE TABLE lost_items (id INTEGER PRIMARY KEY)"))
+            connection.execute(text("CREATE TABLE found_items (id INTEGER PRIMARY KEY)"))
+
+        with patch.object(database, "engine", legacy_engine):
+            database.ensure_item_soft_delete_columns()
+
+        inspector = inspect(legacy_engine)
+        for table_name in ("lost_items", "found_items"):
+            columns = {column["name"] for column in inspector.get_columns(table_name)}
+            self.assertIn("is_deleted", columns)
+            with legacy_engine.connect() as connection:
+                connection.execute(text(f"INSERT INTO {table_name} (id) VALUES (1)"))
+                value = connection.execute(
+                    text(f"SELECT is_deleted FROM {table_name} WHERE id = 1")
+                ).scalar_one()
+                self.assertFalse(value)
 
 
 if __name__ == "__main__":
