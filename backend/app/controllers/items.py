@@ -1,15 +1,25 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from pydantic import BaseModel
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import FoundItem, LostItem, User
+from app.models import FoundItem, ItemReport, LostItem, User
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
@@ -27,6 +37,86 @@ IMAGE_FORMATS = {
     ),
 }
 
+DEFAULT_SAMPLE_ITEMS = [
+    {
+        "id": "sample-1",
+        "type": "lost",
+        "name": "Navy blue backpack",
+        "category": "Bags",
+        "location": "Library, 2nd floor",
+        "date": "2026-10-25",
+        "description": "A navy backpack with a small yellow keychain. It may have been left near the study tables.",
+        "reporter": "Development sample",
+        "icon": "🎒",
+        "status": "Possible match",
+        "reviewStatus": "Approved",
+    },
+    {
+        "id": "sample-2",
+        "type": "found",
+        "name": "Blue backpack",
+        "category": "Bags",
+        "location": "Main Library",
+        "date": "2026-10-26",
+        "description": "Found beside a study table on the second floor. A yellow keychain is attached.",
+        "reporter": "Development sample",
+        "icon": "🎒",
+        "status": "Possible match",
+        "reviewStatus": "Approved",
+    },
+    {
+        "id": "sample-3",
+        "type": "lost",
+        "name": "Student ID card",
+        "category": "Documents",
+        "location": "Science Building",
+        "date": "2026-10-24",
+        "description": "Student ID in a clear sleeve. Please verify the name when claiming.",
+        "reporter": "Development sample",
+        "icon": "🪪",
+        "status": "Open",
+        "reviewStatus": "Approved",
+    },
+    {
+        "id": "sample-4",
+        "type": "found",
+        "name": "Silver water bottle",
+        "category": "Accessories",
+        "location": "Student Center",
+        "date": "2026-10-26",
+        "description": "Reusable silver bottle found near the east entrance.",
+        "reporter": "Development sample",
+        "icon": "🧴",
+        "status": "Open",
+        "reviewStatus": "Approved",
+    },
+    {
+        "id": "sample-5",
+        "type": "lost",
+        "name": "Wireless earbuds case",
+        "category": "Electronics",
+        "location": "Engineering Hall",
+        "date": "2026-10-22",
+        "description": "Small white charging case, no earbuds inside.",
+        "reporter": "Development sample",
+        "icon": "🎧",
+        "status": "Open",
+        "reviewStatus": "Approved",
+    },
+    {
+        "id": "sample-6",
+        "type": "found",
+        "name": "Set of keys",
+        "category": "Personal items",
+        "location": "Campus Garden",
+        "date": "2026-10-21",
+        "description": "Three keys on a green fabric key ring.",
+        "reporter": "Development sample",
+        "icon": "🔑",
+        "status": "Open",
+        "reviewStatus": "Approved",
+    },
+]
 
 class ItemUploadResponse(BaseModel):
     id: int
@@ -37,6 +127,200 @@ class ItemUploadResponse(BaseModel):
     location: str
     date_reported: datetime
     image_path: str
+
+
+class CampusItemSchema(BaseModel):
+    id: str
+    type: Literal["lost", "found"]
+    name: str
+    category: str
+    location: str
+    date: str
+    description: str
+    reporter: str
+    icon: str
+    status: Literal["Open", "Possible match", "Returned"] = "Open"
+    reviewStatus: Literal["Pending", "Approved", "Rejected"] = "Approved"
+    image_path: Optional[str] = None
+
+
+class CreateItemPayload(BaseModel):
+    type: Literal["lost", "found"]
+    name: str = Field(..., min_length=1, max_length=200)
+    category: str = Field(default="Other", max_length=80)
+    location: str = Field(..., min_length=1, max_length=255)
+    date: str = Field(..., min_length=4)
+    description: str = Field(..., min_length=1, max_length=5000)
+    icon: Optional[str] = "📦"
+    reporter: Optional[str] = "Student"
+
+
+@router.get("", response_model=list[CampusItemSchema])
+def list_items(
+    type: Optional[Literal["lost", "found"]] = None,
+    db: Session = Depends(get_db),
+) -> list[CampusItemSchema]:
+    results: list[CampusItemSchema] = []
+
+    # Fetch from lost_items and found_items
+    lost_items = db.scalars(select(LostItem).order_by(LostItem.id.desc())).all()
+    found_items = db.scalars(select(FoundItem).order_by(FoundItem.id.desc())).all()
+
+    for item in lost_items:
+        date_str = (
+            item.date_reported.strftime("%Y-%m-%d")
+            if item.date_reported
+            else "2026-10-31"
+        )
+        results.append(
+            CampusItemSchema(
+                id=f"lost-{item.id}",
+                type="lost",
+                name=item.title,
+                category="General",
+                location=item.location,
+                date=date_str,
+                description=item.description,
+                reporter=f"User #{item.user_id}" if item.user_id else "Community report",
+                icon="🎒",
+                status="Open",
+                reviewStatus="Approved",
+                image_path=item.image_path,
+            )
+        )
+
+    for item in found_items:
+        date_str = (
+            item.date_reported.strftime("%Y-%m-%d")
+            if item.date_reported
+            else "2026-10-31"
+        )
+        results.append(
+            CampusItemSchema(
+                id=f"found-{item.id}",
+                type="found",
+                name=item.title,
+                category="General",
+                location=item.location,
+                date=date_str,
+                description=item.description,
+                reporter=f"User #{item.user_id}" if item.user_id else "Community report",
+                icon="✓",
+                status="Open",
+                reviewStatus="Approved",
+                image_path=item.image_path,
+            )
+        )
+
+    # Fetch from item_reports if any exist
+    try:
+        item_reports = db.scalars(
+            select(ItemReport).order_by(ItemReport.report_id.desc())
+        ).all()
+        for report in item_reports:
+            r_type = "lost" if report.report_type.upper() == "LOST" else "found"
+            date_str = str(report.date_lost_or_found)
+            results.append(
+                CampusItemSchema(
+                    id=f"report-{report.report_id}",
+                    type=r_type,
+                    name=report.item_name,
+                    category=report.category,
+                    location=report.location,
+                    date=date_str,
+                    description=report.description,
+                    reporter=f"User #{report.user_id}" if report.user_id else "Campus Member",
+                    icon="🎒" if r_type == "lost" else "📦",
+                    status="Open",
+                    reviewStatus="Approved",
+                    image_path=report.image_path,
+                )
+            )
+    except Exception:
+        pass
+
+    # Include default sample items so dashboard is never empty
+    for sample in DEFAULT_SAMPLE_ITEMS:
+        results.append(CampusItemSchema.model_validate(sample))
+
+    if type:
+        results = [item for item in results if item.type == type]
+
+    return results
+
+
+@router.post("", response_model=CampusItemSchema, status_code=status.HTTP_201_CREATED)
+def create_item(
+    payload: CreateItemPayload,
+    db: Session = Depends(get_db),
+) -> CampusItemSchema:
+    name = payload.name.strip()
+    description = payload.description.strip()
+    location = payload.location.strip()
+    if not name or not description or not location:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Name, description, and location must not be blank",
+        )
+
+    try:
+        parsed_date = date.fromisoformat(payload.date)
+    except ValueError:
+        parsed_date = date.today()
+
+    dt = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC)
+
+    # Save to LostItem / FoundItem
+    item_model = LostItem if payload.type == "lost" else FoundItem
+    item = item_model(
+        user_id=None,
+        title=name,
+        description=description,
+        location=location,
+        date_reported=dt,
+        image_path="",
+    )
+    db.add(item)
+
+    # Also save to ItemReport for database schema compatibility
+    try:
+        report = ItemReport(
+            user_id=None,
+            item_name=name,
+            category=payload.category,
+            description=description,
+            report_type="LOST" if payload.type == "lost" else "FOUND",
+            image_path=None,
+            date_lost_or_found=parsed_date,
+            location=location,
+            listing_status="Pending Review",
+        )
+        db.add(report)
+    except Exception:
+        pass
+
+    try:
+        db.commit()
+    except SQLAlchemyError as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to save item",
+        ) from error
+
+    return CampusItemSchema(
+        id=f"{payload.type}-{item.id}",
+        type=payload.type,
+        name=name,
+        category=payload.category,
+        location=location,
+        date=payload.date,
+        description=description,
+        reporter=payload.reporter or "Student",
+        icon=payload.icon or "📦",
+        status="Open",
+        reviewStatus="Pending",
+    )
 
 
 @router.post(

@@ -17,7 +17,7 @@ def verify_password(password: str, password_hash: str) -> bool:
     return password_context.verify(password, password_hash)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, role: str) -> str:
     secret_key = os.getenv("JWT_SECRET_KEY")
     if not secret_key:
         raise RuntimeError("JWT_SECRET_KEY must be set before issuing access tokens")
@@ -28,7 +28,7 @@ def create_access_token(user_id: int) -> str:
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
     return jwt.encode(
-        {"sub": str(user_id), "exp": expires_at},
+        {"sub": str(user_id), "role": role, "exp": expires_at},
         secret_key,
         algorithm=JWT_ALGORITHM,
     )

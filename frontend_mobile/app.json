@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "GirlGroup2",
+    "slug": "girlgroup2-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f6f3fb"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#7550a8"
+      }
+    }
+  }
+}

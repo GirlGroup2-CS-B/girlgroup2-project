@@ -89,6 +89,7 @@ def register_user(
     user = User(
         email=credentials.email,
         password_hash=hash_password(credentials.password),
+        role="user",
     )
     db.add(user)
     try:
@@ -121,4 +122,7 @@ def login_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return TokenResponse(access_token=create_access_token(user.id))
+    return TokenResponse(
+        access_token=create_access_token(user.id, user.role),
+        role=user.role,
+    )

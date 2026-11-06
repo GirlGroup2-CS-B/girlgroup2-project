@@ -9,23 +9,119 @@ Official repository for our group project.
 - **Arap** — Database Manager
 - **Tiwanag** — Tester & Documentation
 
-## 📋 Project Scope
-_To be decided._
+## Setup
 
-## 🛠️ Setup Instructions
-If you are working on the Python backend, run these commands in your terminal:
-1. `cd backend`
-2. `pip install -r requirements.txt` (This installs FastAPI, TensorFlow, and scikit-learn)
-3. Set `JWT_SECRET_KEY` to a private, random value before starting the API. In PowerShell, generate and set one with `$env:JWT_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"`. Do not commit the secret.
-4. Start the API with `python -m uvicorn app.main:app --reload`. The API docs are available at `http://localhost:8000/docs`.
-5. The default SQLite database is created at `backend/users.db`. Set `DATABASE_URL` to use a different database.
-6. Run the backend endpoint tests with `python -m unittest discover -s tests -v`.
+The FastAPI backend owns the database connection. The web, mobile, and desktop
+clients call its API; they do not connect to the database directly.
 
-### Authentication endpoints
-- `POST /api/auth/register` accepts `email` and `password` as JSON or URL-encoded form fields and creates an account.
-- `POST /api/auth/login` accepts the same fields and returns a 30-minute JWT access token.
-- Email addresses are normalized to lowercase. Passwords are stored as bcrypt hashes, never as plaintext.
-- `POST /api/items/upload` accepts `multipart/form-data` with `item_type` (`lost` or `found`), `title`, `description`, `location`, and an `image` file. It saves supported image files (JPEG, PNG, GIF, or WebP, up to 10 MiB) under `backend/uploads/` and records the relative path and item details in the corresponding database table. `date_reported` and `user_id` are optional form fields.
+### Backend
+
+In PowerShell:
+
+```powershell
+cd backend
+py -3.12 -m venv .venv-py312
+$python = ".\.venv-py312\Scripts\python.exe"
+& $python -m pip install -r requirements.txt
+$env:JWT_SECRET_KEY = & $python -c "import secrets; print(secrets.token_urlsafe(32))"
+& $python -m uvicorn app.main:app --reload --port 8000
+```
+
+The currently documented stable TensorFlow pip builds support Python 3.9–3.12;
+Python 3.12 is recommended for a fresh environment. These commands create
+`backend\.venv-py312` and leave any existing `backend\.venv` untouched. Install
+Python 3.12 first if `py -3.12` is unavailable.
+
+The API docs are at `http://localhost:8000/docs`. By default, SQLAlchemy creates
+the SQLite database at `backend/users.db` and creates the `users` table when the
+API starts. To use another SQLAlchemy database, set `DATABASE_URL` before
+starting the API (for PostgreSQL, install the included `psycopg[binary]`
+dependency and use a `postgresql+psycopg://...` URL).
+
+If Windows reports that an Application Control policy blocked SQLAlchemy's
+`_collections_cy` extension, check **Event Viewer → Applications and Services
+Logs → Microsoft → Windows → CodeIntegrity → Operational** and share the
+matching event with your IT administrator. Do not disable or bypass the policy;
+changing Python versions alone does not grant permission to load a blocked file.
+
+The web client origins `http://localhost:5173` and
+`http://127.0.0.1:5173`, plus Expo web origins on port 8081, are allowed by
+default. For a deployed web client, set `FRONTEND_ORIGINS` to a comma-separated
+list of its exact origins before starting the API.
+
+### Web client
+
+In a second terminal:
+
+```powershell
+cd frontend_web
+npm.cmd install
+$env:VITE_API_URL = "http://localhost:8000"
+npm.cmd run dev
+```
+
+Open the URL printed by Vite. `VITE_API_URL` can point at a deployed backend.
+
+### Mobile client
+
+```powershell
+cd frontend_mobile
+npm install
+$env:EXPO_PUBLIC_API_URL = "http://10.0.2.2:8000"
+npm run android
+```
+
+`10.0.2.2` is the Android emulator's route to the host computer. Use
+`http://localhost:8000` for an iOS simulator, or the computer's LAN IP address
+for a physical device. The phone and backend computer must be on the same
+network.
+
+### Desktop client
+
+```powershell
+cd frontend_desktop
+npm install
+$env:GIRLGROUP2_API_URL = "http://localhost:8000"
+npm run dev
+```
+
+The Electron main process calls the API through a context-isolated preload
+bridge. For a production build, run `npm run build` and then `npm start`.
+
+### Authentication and database
+
+- `POST /api/auth/register` accepts `email` and `password` as JSON and creates a
+  database-backed account.
+- `POST /api/auth/login` accepts the same fields and returns a 30-minute JWT.
+- Email addresses are normalized to lowercase. Passwords are stored as bcrypt
+  hashes, never as plaintext.
+- The three clients provide registration and login forms; the JWT stays in
+  client memory and is not persisted between app launches.
+
+To run the backend authentication tests:
+
+```powershell
+cd backend
+& .\.venv-py312\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+The backend tests cover authentication and item uploads. Keep
+`JWT_SECRET_KEY` private and do not commit it.
+
+### API endpoints
+
+- `POST /api/auth/register` accepts `email` and `password` as JSON or
+  URL-encoded form fields and creates an account.
+- `POST /api/auth/login` accepts the same fields and returns a 30-minute JWT
+  access token.
+- Email addresses are normalized to lowercase. Passwords are stored as bcrypt
+  hashes, never as plaintext.
+- `POST /api/items/upload` accepts `multipart/form-data` with `item_type`
+  (`lost` or `found`), `title`, `description`, `location`, and an `image` file.
+  Supported image files (JPEG, PNG, GIF, or WebP) up to 10 MiB are saved under
+  `backend/uploads/`. `date_reported` and `user_id` are optional form fields.
+- The three clients provide registration and login forms; the JWT stays in
+  client memory and is not persisted between app launches.
 
 ## 🤝 Contributing
 1. Create a branch: `git checkout -b feature/your-feature`
