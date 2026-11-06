@@ -1,18 +1,7 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from app.database import Base, SessionLocal, database_url, engine
 
 
-DATABASE_PATH = Path(__file__).resolve().parents[2] / "campusfind.db"
-DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-
-class Base(DeclarativeBase):
-    pass
+DATABASE_URL = database_url
+DATABASE_PATH = Path(engine.url.database or ":memory:")
