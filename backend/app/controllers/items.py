@@ -118,7 +118,6 @@ DEFAULT_SAMPLE_ITEMS = [
     },
 ]
 
-
 class ItemUploadResponse(BaseModel):
     id: int
     item_type: Literal["lost", "found"]

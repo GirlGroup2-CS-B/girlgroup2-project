@@ -1,5 +1,4 @@
 from datetime import date, datetime, time
-from typing import Optional
 
 from sqlalchemy import (
     CheckConstraint,
@@ -14,6 +13,16 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+
+class ItemFields:
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text)
+    location: Mapped[str] = mapped_column(String(255))
+    date_reported: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    image_path: Mapped[str] = mapped_column(String(500))
 
 
 class User(Base):
@@ -31,16 +40,6 @@ class User(Base):
         default="user",
         server_default=text("'user'"),
     )
-
-
-class ItemFields:
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    title: Mapped[str] = mapped_column(String(200))
-    description: Mapped[str] = mapped_column(Text)
-    location: Mapped[str] = mapped_column(String(255))
-    date_reported: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    image_path: Mapped[str] = mapped_column(String(500))
 
 
 class LostItem(ItemFields, Base):

@@ -105,6 +105,24 @@ cd backend
 & .\.venv-py312\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
+The backend tests cover authentication and item uploads. Keep
+`JWT_SECRET_KEY` private and do not commit it.
+
+### API endpoints
+
+- `POST /api/auth/register` accepts `email` and `password` as JSON or
+  URL-encoded form fields and creates an account.
+- `POST /api/auth/login` accepts the same fields and returns a 30-minute JWT
+  access token.
+- Email addresses are normalized to lowercase. Passwords are stored as bcrypt
+  hashes, never as plaintext.
+- `POST /api/items/upload` accepts `multipart/form-data` with `item_type`
+  (`lost` or `found`), `title`, `description`, `location`, and an `image` file.
+  Supported image files (JPEG, PNG, GIF, or WebP) up to 10 MiB are saved under
+  `backend/uploads/`. `date_reported` and `user_id` are optional form fields.
+- The three clients provide registration and login forms; the JWT stays in
+  client memory and is not persisted between app launches.
+
 ## 🤝 Contributing
 1. Create a branch: `git checkout -b feature/your-feature`
 2. Commit your changes: `git commit -m "Describe your change"`
