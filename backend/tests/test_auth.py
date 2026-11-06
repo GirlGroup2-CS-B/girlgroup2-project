@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 
 from app.database import SessionLocal
 from app.main import app
-from app.models import User
+from app.api_models import User
 
 
 class AuthEndpointTests(unittest.TestCase):
@@ -122,6 +122,12 @@ class AuthEndpointTests(unittest.TestCase):
         content = response.json()["paths"]["/api/auth/register"]["post"]["requestBody"]["content"]
         self.assertIn("application/json", content)
         self.assertIn("application/x-www-form-urlencoded", content)
+
+    def test_existing_users_router_remains_available_after_merge(self) -> None:
+        response = self.client.get("/users/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["email"], "sample@school.edu")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,7 @@
 __pycache__/
-users.db
+*.py[cod]
+*.db
 uploads/
+.env
+.env.*
+!.env.example

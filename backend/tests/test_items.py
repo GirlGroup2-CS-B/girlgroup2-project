@@ -13,7 +13,7 @@ from sqlalchemy import delete, select
 from app.controllers import items
 from app.database import SessionLocal
 from app.main import app
-from app.models import FoundItem, LostItem
+from app.api_models import FoundItem, LostItem
 
 PNG_IMAGE = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"

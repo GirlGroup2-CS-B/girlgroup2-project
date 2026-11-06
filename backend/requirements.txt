@@ -1,11 +1,13 @@
 fastapi
 python-multipart
 uvicorn
-sqlalchemy
+SQLAlchemy>=2.0,<3.0
+psycopg2-binary>=2.9,<3.0
 tensorflow
 opencv-python
 numpy
 scikit-learn
 python-jose[cryptography]
 passlib[bcrypt]
+python-dotenv
 bcrypt<4.1

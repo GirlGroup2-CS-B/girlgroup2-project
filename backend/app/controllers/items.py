@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import FoundItem, LostItem, User
+from app.api_models import FoundItem, LostItem, User
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
