@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -14,6 +14,12 @@ class ItemFields:
     location: Mapped[str] = mapped_column(String(255))
     date_reported: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     image_path: Mapped[str] = mapped_column(String(500))
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
+        nullable=False,
+    )
 
 
 class User(Base):
