@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f3fb" />
+    <title>CampusFind</title>
+  </head>
+  <body>
+    <div id="root">
+      <main style="box-sizing:border-box;min-height:100vh;display:grid;place-content:center;gap:12px;padding:32px;font-family:system-ui,sans-serif;color:#172033;background:#f6f3fb;text-align:center">
+        <h1 style="margin:0">CampusFind</h1>
+        <p style="margin:0">Loading the desktop app...</p>
+      </main>
+    </div>
+    <script>
+      (() => {
+        const root = document.getElementById("root");
+        let finished = false;
+        const showError = () => {
+          if (finished) return;
+          finished = true;
+          root.innerHTML = `
+            <main style="box-sizing:border-box;min-height:100vh;display:grid;align-content:center;justify-items:center;gap:12px;padding:32px;font-family:system-ui,sans-serif;color:#172033;background:#f6f3fb;text-align:center">
+              <h1 style="margin:0">CampusFind could not start</h1>
+              <p style="max-width:520px;margin:0">The app could not load its interface. Close and reopen CampusFind. If this keeps happening, reinstall the complete desktop app folder and check that the backend is running.</p>
+              <button onclick="location.reload()" style="padding:10px 18px;border:0;border-radius:8px;background:#3154c8;color:white;font:inherit;cursor:pointer">Try again</button>
+            </main>`;
+        };
+        const timer = window.setTimeout(showError, 15000);
+        window.addEventListener("campusfind:app-ready", () => {
+          finished = true;
+          window.clearTimeout(timer);
+        }, { once: true });
+        window.addEventListener("error", (event) => {
+          if (event.target instanceof HTMLScriptElement || event.error) showError();
+        }, true);
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

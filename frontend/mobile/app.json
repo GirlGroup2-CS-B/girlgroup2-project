@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "CampusFind",
+    "slug": "campusfind-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f6f3fb"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "NSLocalNetworkUsageDescription": "CampusFind connects to the API running on your computer while developing."
+      }
+    },
+    "android": {
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#7550a8"
+      }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
