@@ -13,15 +13,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { register, login, googleAuth } = require('../controllers/authController');
+const { register, login } = require('../controllers/authController');
 
 // POST /api/auth/register — Register a new user
 router.post('/register', register);
 
 // POST /api/auth/login — Log in and receive an access token
 router.post('/login', login);
-
-// POST /api/auth/google — Authenticate or sign up via Google
-router.post('/google', googleAuth);
 
 module.exports = router;

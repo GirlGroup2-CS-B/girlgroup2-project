@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { API_URL } from "./apiConfig";
 
 type Props = {
@@ -37,38 +37,42 @@ type StatisticsResponse = {
   error?: string;
 };
 
-const reports = [
-  {
-    item: "Black wallet",
-    type: "Lost item",
-    location: "Administration Building",
-    date: "Today, 9:42 AM",
-  },
-  {
-    item: "Student ID card",
-    type: "Found item",
-    location: "University Library",
-    date: "Today, 8:16 AM",
-  },
-  {
-    item: "Wireless earbuds",
-    type: "Lost item",
-    location: "Student Center",
-    date: "Yesterday, 4:30 PM",
-  },
-];
+type PendingReport = {
+  report_id: number | string;
+  item_name: string;
+  category: string;
+  report_type: "LOST" | "FOUND";
+  location: string;
+  date_lost_or_found: string;
+  description: string;
+  image_path: string | null;
+  reporter_name: string | null;
+};
+
+type ReviewQueueResponse = {
+  items?: PendingReport[];
+  error?: string;
+};
 
 export default function AdminDashboard({ email, token, onExit }: Props) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [pendingReports, setPendingReports] = useState<PendingReport[]>([]);
   const [statistics, setStatistics] = useState<AccountStatistics | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [reportsLoading, setReportsLoading] = useState(true);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [busyReportId, setBusyReportId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [reportsError, setReportsError] = useState("");
+  const [reportsNotice, setReportsNotice] = useState("");
+  const usersRequestInFlight = useRef(false);
 
-  async function loadUsers() {
-    setLoading(true);
+  async function loadUsers(showLoading = true) {
+    if (usersRequestInFlight.current) return;
+    usersRequestInFlight.current = true;
+    if (showLoading) setLoading(true);
     setError("");
     try {
       const headers = { Authorization: `Bearer ${token}` };
@@ -91,12 +95,44 @@ export default function AdminDashboard({ email, token, onExit }: Props) {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load accounts.");
     } finally {
-      setLoading(false);
+      usersRequestInFlight.current = false;
+      if (showLoading) setLoading(false);
+    }
+  }
+
+  async function loadPendingReports() {
+    setReportsLoading(true);
+    setReportsError("");
+    try {
+      const response = await fetch(`${API_URL}/api/items/review-queue`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = (await response.json()) as ReviewQueueResponse;
+      if (!response.ok) {
+        throw new Error(result.error || `Unable to load reports (${response.status}).`);
+      }
+      setPendingReports(result.items || []);
+    } catch (loadError) {
+      setReportsError(loadError instanceof Error ? loadError.message : "Unable to load reports.");
+    } finally {
+      setReportsLoading(false);
     }
   }
 
   useEffect(() => {
     void loadUsers();
+    void loadPendingReports();
+
+    const refreshAccounts = () => {
+      if (!document.hidden) void loadUsers(false);
+    };
+    const intervalId = window.setInterval(refreshAccounts, 5000);
+    document.addEventListener("visibilitychange", refreshAccounts);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshAccounts);
+    };
   }, [token]);
 
   const filteredUsers = useMemo(() => {
@@ -132,6 +168,33 @@ export default function AdminDashboard({ email, token, onExit }: Props) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update account.");
     } finally {
       setBusyUserId(null);
+    }
+  }
+
+  async function reviewReport(report: PendingReport, status: "approved" | "rejected") {
+    const reportId = String(report.report_id);
+    setBusyReportId(reportId);
+    setReportsError("");
+    setReportsNotice("");
+    try {
+      const response = await fetch(`${API_URL}/api/items/${encodeURIComponent(reportId)}/review`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(result.error || `Unable to review report (${response.status}).`);
+      }
+      setReportsNotice(`"${report.item_name}" ${status}.`);
+      await loadPendingReports();
+    } catch (reviewError) {
+      setReportsError(reviewError instanceof Error ? reviewError.message : "Unable to review report.");
+    } finally {
+      setBusyReportId(null);
     }
   }
 
@@ -189,7 +252,7 @@ export default function AdminDashboard({ email, token, onExit }: Props) {
             <span aria-hidden="true">ⓘ</span>
             <p>
               <strong>Admin access verified.</strong> Account management is connected
-              to the database. The report queue below still uses sample data.
+              to PostgreSQL, and item reports are loaded from the live review queue.
             </p>
           </div>
 
@@ -213,8 +276,8 @@ export default function AdminDashboard({ email, token, onExit }: Props) {
               <article className="admin-stat-card">
                 <span className="admin-stat-icon gold" aria-hidden="true">◷</span>
                 <span>Pending review</span>
-                <strong>8</strong>
-                <small>Sample dashboard data</small>
+                <strong>{pendingReports.length}</strong>
+                <small>Reports awaiting your review</small>
               </article>
               <article className="admin-stat-card">
                 <span className="admin-stat-icon green" aria-hidden="true">✓</span>
@@ -336,33 +399,55 @@ export default function AdminDashboard({ email, token, onExit }: Props) {
                 <p className="section-label">NEEDS ATTENTION</p>
                 <h2>Recent report queue</h2>
               </div>
-              <span className="admin-queue-count">8 pending</span>
+              <div className="admin-queue-controls">
+                <span className="admin-queue-count">{pendingReports.length} pending</span>
+                <button type="button" className="admin-refresh-button" onClick={() => void loadPendingReports()} disabled={reportsLoading}>
+                  {reportsLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
             </div>
 
+            {reportsError && <p className="admin-feedback error" role="alert">{reportsError}</p>}
+            {reportsNotice && <p className="admin-feedback success" role="status">{reportsNotice}</p>}
+
             <div className="admin-report-list">
-              {reports.map((report) => (
-                <article className="admin-report-row" key={report.item}>
-                  <span className="admin-report-icon" aria-hidden="true">
-                    {report.type === "Lost item" ? "⌕" : "✓"}
-                  </span>
-                  <div className="admin-report-details">
-                    <strong>{report.item}</strong>
-                    <span>
-                      {report.type} · {report.location}
-                    </span>
-                    <small>{report.date}</small>
-                  </div>
-                  <span className="admin-pending-status">Pending</span>
-                  <button type="button" disabled title="Preview only">
-                    Review
-                  </button>
-                </article>
-              ))}
+              {reportsLoading ? (
+                <p className="admin-disabled-note">Loading reports from PostgreSQL...</p>
+              ) : pendingReports.length === 0 ? (
+                <p className="admin-disabled-note">No reports are waiting for review.</p>
+              ) : pendingReports.map((report) => {
+                const reportId = String(report.report_id);
+                const imageUrl = report.image_path?.startsWith("/uploads/")
+                  ? `${API_URL}${report.image_path}`
+                  : report.image_path;
+                return (
+                  <article className="admin-report-row" key={reportId}>
+                    {imageUrl ? (
+                      <img className="admin-report-image" src={imageUrl} alt={`Photo of ${report.item_name}`} />
+                    ) : (
+                      <span className="admin-report-icon" aria-hidden="true">
+                        {report.report_type === "LOST" ? "⌕" : "✓"}
+                      </span>
+                    )}
+                    <div className="admin-report-details">
+                      <strong>{report.item_name}</strong>
+                      <span>{report.report_type === "LOST" ? "Lost item" : "Found item"} · {report.category} · {report.location}</span>
+                      <small>Reported by {report.reporter_name || "Campus user"} · {report.date_lost_or_found}</small>
+                      <p>{report.description}</p>
+                    </div>
+                    <span className="admin-pending-status">Pending</span>
+                    <div className="admin-report-actions">
+                      <button type="button" onClick={() => void reviewReport(report, "approved")} disabled={busyReportId === reportId}>
+                        {busyReportId === reportId ? "Saving..." : "Approve"}
+                      </button>
+                      <button type="button" onClick={() => void reviewReport(report, "rejected")} disabled={busyReportId === reportId}>
+                        Reject
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-            <p className="admin-disabled-note">
-              Report review will be available when verified admin access and
-              backend review endpoints are implemented.
-            </p>
           </section>
 
           <section id="admin-activity" className="admin-section admin-activity">

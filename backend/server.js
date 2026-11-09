@@ -20,6 +20,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
+const path = require('path');
 const apiDocs = require('./openapi');
 
 // Load environment variables from .env file
@@ -40,6 +41,7 @@ app.use(express.json());
 
 // Parse URL-encoded request bodies (for form submissions)
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // =============================================================================
 // Import Route Modules

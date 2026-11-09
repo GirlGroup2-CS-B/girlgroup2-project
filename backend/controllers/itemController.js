@@ -13,6 +13,36 @@
  */
 
 const ItemModel = require('../models/itemModel');
+const fs = require('fs/promises');
+
+const matchesImageSignature = (bytes, mimetype) => {
+  switch (mimetype) {
+    case 'image/jpeg':
+      return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    case 'image/png':
+      return bytes.length >= 8
+        && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    case 'image/gif':
+      return bytes.subarray(0, 6).toString('ascii').match(/^GIF8[79]a$/) !== null;
+    case 'image/webp':
+      return bytes.length >= 12
+        && bytes.subarray(0, 4).toString('ascii') === 'RIFF'
+        && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+    default:
+      return false;
+  }
+};
+
+const removeUploadedImage = async (filePath) => {
+  if (!filePath) return;
+  try {
+    await fs.unlink(filePath);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.error('Unable to remove invalid report image:', err.message);
+    }
+  }
+};
 
 /**
  * GET /api/items/review-queue
@@ -128,21 +158,23 @@ const getItem = async (req, res) => {
  * Requires authentication — the user_id is taken from the JWT token.
  * 
  * Expected request body:
- *   { item_name, category, description, report_type, image_path?,
+ *   { item_name, category, description, report_type, image?,
  *     date_lost_or_found?, approximate_time?, location, additional_details?,
- *     contact_preference?, custody_information?, listing_status?, extra_data? }
+ *     contact_preference?, custody_information?, extra_data? }
  */
 const createItem = async (req, res) => {
+  let uploadedImagePath = req.file?.path;
   try {
     const {
       item_name, category, description, report_type,
-      image_path, date_lost_or_found, approximate_time, location,
-      additional_details, contact_preference, custody_information,
-      listing_status, extra_data
+      date_lost_or_found, approximate_time, location, additional_details,
+      contact_preference, custody_information, extra_data
     } = req.body;
 
     // Validate required fields
     if (!item_name || !category || !description || !report_type || !location || !date_lost_or_found) {
+      await removeUploadedImage(uploadedImagePath);
+      uploadedImagePath = undefined;
       return res.status(400).json({
         error: 'Required fields: item_name, category, description, report_type, date_lost_or_found, location'
       });
@@ -150,9 +182,20 @@ const createItem = async (req, res) => {
 
     // Validate report_type value
     if (!['LOST', 'FOUND'].includes(report_type.toUpperCase())) {
+      await removeUploadedImage(uploadedImagePath);
+      uploadedImagePath = undefined;
       return res.status(400).json({
         error: 'report_type must be either "LOST" or "FOUND".'
       });
+    }
+
+    if (req.file) {
+      const imageContents = await fs.readFile(req.file.path);
+      if (!matchesImageSignature(imageContents, req.file.mimetype)) {
+        await removeUploadedImage(uploadedImagePath);
+        uploadedImagePath = undefined;
+        return res.status(400).json({ error: 'The uploaded file is not a valid supported image.' });
+      }
     }
 
     // Create the item with the authenticated user's ID
@@ -162,22 +205,26 @@ const createItem = async (req, res) => {
       category,
       description,
       report_type: report_type.toUpperCase(),
-      image_path,
+      image_path: req.file ? `/uploads/${req.file.filename}` : null,
       date_lost_or_found,
       approximate_time,
       location,
       additional_details,
       contact_preference,
       custody_information,
-      listing_status,
+      listing_status: 'Pending Review',
       extra_data
     });
 
+    uploadedImagePath = undefined;
     return res.status(201).json({
       message: 'Item report created successfully.',
       item: newItem
     });
   } catch (err) {
+    if (uploadedImagePath) {
+      await removeUploadedImage(uploadedImagePath);
+    }
     console.error('Error creating item:', err.message);
     return res.status(500).json({ error: 'Failed to create item report.' });
   }

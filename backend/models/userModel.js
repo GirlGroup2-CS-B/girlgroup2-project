@@ -65,7 +65,15 @@ const UserModel = {
 
   getAccountStatistics: async () => {
     const result = await pool.query(
-      'SELECT * FROM "user".campusfind_account_statistics()'
+      `SELECT
+         COUNT(*)::BIGINT AS total_accounts,
+         COUNT(*) FILTER (WHERE is_active)::BIGINT AS active_accounts,
+         COUNT(*) FILTER (WHERE NOT is_active)::BIGINT AS inactive_accounts,
+         COUNT(*) FILTER (WHERE role = 'student')::BIGINT AS student_accounts,
+         COUNT(*) FILTER (WHERE role = 'reviewer')::BIGINT AS reviewer_accounts,
+         COUNT(*) FILTER (WHERE role = 'admin')::BIGINT AS admin_accounts
+       FROM "user".users
+       WHERE deleted_at IS NULL`
     );
     return result.rows[0];
   },

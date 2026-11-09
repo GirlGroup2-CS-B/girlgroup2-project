@@ -51,9 +51,6 @@ export default function App() {
   const [fullName, setFullName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState("");
-  const [customGoogleName, setCustomGoogleName] = useState("");
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [session, setSession] = useState<{
@@ -129,60 +126,6 @@ export default function App() {
         error instanceof Error
           ? error.message
           : "Unable to reach the server. Please try again.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleGoogleSignIn(
-    googleEmail: string,
-    googleName?: string,
-  ) {
-    setMessage("");
-    setIsError(false);
-    setIsSubmitting(true);
-    setShowGoogleModal(false);
-
-    try {
-      const response = await fetch(`${API_URL}/api/auth/google`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: googleEmail.trim().toLowerCase(),
-          full_name: googleName || googleEmail.split("@")[0],
-        }),
-      });
-
-      const result = (await response.json().catch(() => ({}))) as AuthResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          getErrorMessage(result.detail, result.error, response.status),
-        );
-      }
-
-      if (!result.access_token) {
-        throw new Error("Google login did not return an access token.");
-      }
-
-      const clientRole: AccountRole = result.role === "admin" ? "admin" : "user";
-
-      setSession({
-        email: googleEmail.trim().toLowerCase(),
-        token: result.access_token,
-        role: clientRole,
-      });
-
-      setMessage("Signed in with Google successfully.");
-    } catch (error) {
-      setIsError(true);
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to complete Google authentication.",
       );
     } finally {
       setIsSubmitting(false);
@@ -325,7 +268,7 @@ export default function App() {
             <p className="auth-description">
               {isRegistering
                 ? "Create an account to get started."
-                : "Sign in to continue to your account."}
+                : "Sign in with your registered account. Admin accounts open the admin console."}
             </p>
 
             <form onSubmit={submit}>
@@ -434,22 +377,6 @@ export default function App() {
               </button>
             </form>
 
-            <button
-              className="google-entry"
-              type="button"
-              onClick={() => setShowGoogleModal(true)}
-              disabled={isSubmitting}
-              title="Sign in with your Google account"
-            >
-              <span className="google-mark" aria-hidden="true">
-                G
-              </span>
-              Continue with Google
-            </button>
-            <p className="google-entry-note" id="google-sign-in-note">
-              Sign in instantly with a Google or JRMSU email.
-            </p>
-
             <div className="auth-switch">
               <span>
                 {isRegistering
@@ -475,111 +402,6 @@ export default function App() {
         <span>JRMSU Main Campus</span>
       </footer>
 
-      {showGoogleModal && (
-        <div
-          className="google-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setShowGoogleModal(false)}
-        >
-          <div
-            className="google-modal-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="google-modal-header">
-              <span className="google-mark" aria-hidden="true">
-                G
-              </span>
-              <h3>Sign in with Google</h3>
-              <button
-                type="button"
-                className="google-modal-close"
-                onClick={() => setShowGoogleModal(false)}
-                aria-label="Close dialog"
-              >
-                ×
-              </button>
-            </div>
-
-            <p className="google-modal-desc">
-              Choose an account to continue to CampusFind JRMSU.
-            </p>
-
-            <div className="google-account-list">
-              <button
-                type="button"
-                className="google-account-item"
-                onClick={() =>
-                  handleGoogleSignIn(
-                    "arapcutie@gmail.com",
-                    "Arap, Cutie I.",
-                  )
-                }
-              >
-                <div className="google-avatar blue">A</div>
-                <div className="google-account-info">
-                  <strong>Arap, Cutie I.</strong>
-                  <span>arapcutie@gmail.com</span>
-                </div>
-                <span className="google-account-badge student">Student</span>
-              </button>
-
-              <button
-                type="button"
-                className="google-account-item"
-                onClick={() =>
-                  handleGoogleSignIn(
-                    "student@jrmsu.edu",
-                    "JRMSU Student",
-                  )
-                }
-              >
-                <div className="google-avatar green">S</div>
-                <div className="google-account-info">
-                  <strong>JRMSU Student</strong>
-                  <span>student@jrmsu.edu</span>
-                </div>
-                <span className="google-account-badge student">Student</span>
-              </button>
-
-            </div>
-
-            <form
-              className="google-custom-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!customGoogleEmail) return;
-                handleGoogleSignIn(
-                  customGoogleEmail,
-                  customGoogleName || customGoogleEmail.split("@")[0],
-                );
-              }}
-            >
-              <span className="demo-accounts-label">Or use custom Google account:</span>
-              <input
-                type="email"
-                placeholder="Google email (e.g. you@gmail.com)"
-                value={customGoogleEmail}
-                onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Full name (optional)"
-                value={customGoogleName}
-                onChange={(e) => setCustomGoogleName(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="primary-button compact"
-                style={{ width: "100%", marginTop: "4px" }}
-              >
-                Continue with this Google account →
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

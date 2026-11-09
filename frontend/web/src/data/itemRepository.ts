@@ -20,7 +20,9 @@ export type CampusItem = {
 export type NewItem = Omit<
   CampusItem,
   "id" | "reporter" | "status" | "reviewStatus"
->;
+> & {
+  image?: File;
+};
 
 function toCampusItem(value: unknown): CampusItem | null {
   if (typeof value !== "object" || value === null) {
@@ -140,20 +142,23 @@ export const itemRepository = {
           : input.category === "Personal items"
             ? "Other"
             : input.category;
+    const body = new FormData();
+    body.append("item_name", input.name);
+    body.append("category", category);
+    body.append("location", input.location);
+    body.append("date_lost_or_found", input.date);
+    body.append("description", input.description);
+    body.append("report_type", input.type.toUpperCase());
+    if (input.image) {
+      body.append("image", input.image);
+    }
+
     const response = await fetch(`${API_URL}/api/items`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        item_name: input.name,
-        category,
-        location: input.location,
-        date_lost_or_found: input.date,
-        description: input.description,
-        report_type: input.type.toUpperCase(),
-      }),
+      body,
     });
     const data: unknown = await response.json().catch(() => ({}));
 

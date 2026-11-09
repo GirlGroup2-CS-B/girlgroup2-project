@@ -1,6 +1,8 @@
 -- CampusFind PostgreSQL database
 -- Run this file against a PostgreSQL server to create the schema tables.
 
+CREATE SCHEMA IF NOT EXISTS "user";
+
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS "user".users (

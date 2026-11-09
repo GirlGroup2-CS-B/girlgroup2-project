@@ -15,10 +15,7 @@ CREATE DATABASE campusfind_db;
 -- 2. Connect to it
 \c campusfind_db
 
--- 3. Create the schema
-CREATE SCHEMA IF NOT EXISTS "user";
-
--- 4. Run the SQL file
+-- 3. Run the SQL file; it creates the "user" schema if it is missing
 \i campusfind_postgresql.sql
 ```
 

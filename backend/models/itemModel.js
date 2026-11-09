@@ -31,7 +31,8 @@ const ItemModel = {
    */
   getAllItems: async (filters = {}) => {
     let query = `
-      SELECT ir.*, u.full_name AS reporter_name
+      SELECT ir.*, ir.date_lost_or_found::TEXT AS date_lost_or_found,
+             u.full_name AS reporter_name
       FROM "user".item_reports ir
       LEFT JOIN "user".users u ON ir.user_id = u.user_id
       WHERE ir.is_deleted = FALSE
@@ -76,7 +77,8 @@ const ItemModel = {
    */
   getItemById: async (reportId) => {
     const query = `
-      SELECT ir.*, u.full_name AS reporter_name, u.email AS reporter_email
+      SELECT ir.*, ir.date_lost_or_found::TEXT AS date_lost_or_found,
+             u.full_name AS reporter_name, u.email AS reporter_email
       FROM "user".item_reports ir
       LEFT JOIN "user".users u ON ir.user_id = u.user_id
       WHERE ir.report_id = $1 AND ir.is_deleted = FALSE
@@ -93,7 +95,8 @@ const ItemModel = {
    */
   getItemsByType: async (reportType) => {
     const query = `
-      SELECT ir.*, u.full_name AS reporter_name
+      SELECT ir.*, ir.date_lost_or_found::TEXT AS date_lost_or_found,
+             u.full_name AS reporter_name
       FROM "user".item_reports ir
       LEFT JOIN "user".users u ON ir.user_id = u.user_id
       WHERE ir.report_type = $1 AND ir.is_deleted = FALSE
@@ -111,7 +114,8 @@ const ItemModel = {
    */
   getItemsByUser: async (userId) => {
     const query = `
-      SELECT ir.*, u.full_name AS reporter_name
+      SELECT ir.*, ir.date_lost_or_found::TEXT AS date_lost_or_found,
+             u.full_name AS reporter_name
       FROM "user".item_reports ir
       LEFT JOIN "user".users u ON ir.user_id = u.user_id
       WHERE ir.user_id = $1 AND ir.is_deleted = FALSE
@@ -123,7 +127,8 @@ const ItemModel = {
 
   getPendingItems: async () => {
     const query = `
-      SELECT ir.*, u.full_name AS reporter_name
+      SELECT ir.*, ir.date_lost_or_found::TEXT AS date_lost_or_found,
+             u.full_name AS reporter_name
       FROM "user".item_reports ir
       LEFT JOIN "user".users u ON ir.user_id = u.user_id
       WHERE ir.is_deleted = FALSE AND ir.listing_status = 'Pending Review'
@@ -140,7 +145,7 @@ const ItemModel = {
       WHERE report_id = $2
         AND is_deleted = FALSE
         AND listing_status = 'Pending Review'
-      RETURNING *
+      RETURNING *, date_lost_or_found::TEXT AS date_lost_or_found
     `;
     const result = await pool.query(query, [listingStatus, reportId]);
     return result.rows[0] || null;
@@ -167,7 +172,7 @@ const ItemModel = {
          additional_details, contact_preference, custody_information,
          listing_status, extra_data)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING *
+      RETURNING *, date_lost_or_found::TEXT AS date_lost_or_found
     `;
     const values = [
       user_id, item_name, category, description, report_type,
@@ -194,7 +199,7 @@ const ItemModel = {
       'item_name', 'category', 'description', 'report_type',
       'image_path', 'date_lost_or_found', 'approximate_time', 'location',
       'additional_details', 'contact_preference', 'custody_information',
-      'listing_status', 'extra_data'
+      'extra_data'
     ];
 
     const setClauses = [];
@@ -222,7 +227,7 @@ const ItemModel = {
       UPDATE "user".item_reports
       SET ${setClauses.join(', ')}
       WHERE report_id = $${paramIndex} AND is_deleted = FALSE
-      RETURNING *
+      RETURNING *, date_lost_or_found::TEXT AS date_lost_or_found
     `;
 
     const result = await pool.query(query, values);

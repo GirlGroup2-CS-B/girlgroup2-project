@@ -16,6 +16,15 @@ const jsonRequest = (schema) => ({
   }
 });
 
+const multipartRequest = (schema) => ({
+  required: true,
+  content: {
+    'multipart/form-data': {
+      schema: { $ref: `#/components/schemas/${schema}` }
+    }
+  }
+});
+
 const secured = (responses) => ({
   ...responses,
   401: { description: 'Missing or invalid bearer token.' },
@@ -85,19 +94,6 @@ module.exports = {
         }
       }
     },
-    '/api/auth/google': {
-      post: {
-        tags: ['Authentication'],
-        summary: 'Sign in or register with a Google profile',
-        requestBody: jsonRequest('GoogleAuthRequest'),
-        responses: {
-          200: { description: 'Google authentication successful.' },
-          400: errorResponse,
-          403: { description: 'Account is deactivated.' },
-          500: errorResponse
-        }
-      }
-    },
     '/api/items': {
       get: {
         tags: ['Items'],
@@ -116,7 +112,7 @@ module.exports = {
         tags: ['Items'],
         summary: 'Create an item report',
         security: [{ bearerAuth: [] }],
-        requestBody: jsonRequest('CreateItemRequest'),
+        requestBody: multipartRequest('CreateItemRequest'),
         responses: secured({
           201: { description: 'Report created.' },
           400: errorResponse,
@@ -311,15 +307,6 @@ module.exports = {
           password: { type: 'string', format: 'password' }
         }
       },
-      GoogleAuthRequest: {
-        type: 'object',
-        properties: {
-          email: { type: 'string', format: 'email' },
-          full_name: { type: 'string' },
-          student_id: { type: 'string' },
-          credential: { type: 'string', description: 'Google credential token (if used by the client).' }
-        }
-      },
       CreateItemRequest: {
         type: 'object',
         required: ['item_name', 'category', 'description', 'report_type', 'date_lost_or_found', 'location'],
@@ -328,14 +315,13 @@ module.exports = {
           category: { type: 'string' },
           description: { type: 'string' },
           report_type: { type: 'string', enum: ['LOST', 'FOUND'] },
-          image_path: { type: 'string' },
+          image: { type: 'string', format: 'binary' },
           date_lost_or_found: { type: 'string', format: 'date' },
           approximate_time: { type: 'string' },
           location: { type: 'string' },
           additional_details: { type: 'string' },
           contact_preference: { type: 'string' },
           custody_information: { type: 'string' },
-          listing_status: { type: 'string' },
           extra_data: { type: 'object', additionalProperties: true }
         }
       },

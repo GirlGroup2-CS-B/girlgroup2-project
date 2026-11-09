@@ -6,7 +6,6 @@ async function seed() {
   try {
     const adminHash = await bcrypt.hash('Admin123!', 10);
     const userHash = await bcrypt.hash('User123!', 10);
-    const arapHash = await bcrypt.hash('Arap1234', 10);
 
     // Upsert admin
     await pool.query(
@@ -25,13 +24,6 @@ async function seed() {
       ['Student Demo', 'student@campusfind.edu', 'STU-2024-001', userHash, 'student', 'email']
     );
     console.log('Student account ready: student@campusfind.edu (password: User123!)');
-
-    // Update arapcutie@gmail.com with Arap1234 if it exists
-    await pool.query(
-      `UPDATE "user".users SET password_hash = $1 WHERE email = 'arapcutie@gmail.com'`,
-      [arapHash]
-    );
-    console.log('User arapcutie@gmail.com updated with password Arap1234');
 
     process.exit(0);
   } catch (err) {

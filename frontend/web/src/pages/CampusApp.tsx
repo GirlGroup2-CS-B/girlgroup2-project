@@ -6,6 +6,7 @@ import {
   itemRepository,
   NewItem,
 } from "../data/itemRepository";
+import { API_URL } from "../apiConfig";
 import type { AccountRole } from "../authTypes";
 
 type Props = {
@@ -37,7 +38,13 @@ const categories = [
 ];
 
 function formatDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, {
+  const dateValue = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? value;
+  const date = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
+
+  return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -185,9 +192,15 @@ export default function CampusApp({ email, token, role, onSignOut }: Props) {
     const location = String(form.get("location") ?? "").trim();
     const date = String(form.get("date") ?? "");
     const description = String(form.get("description") ?? "").trim();
+    const imageValue = form.get("image");
+    const image = imageValue instanceof File && imageValue.size > 0 ? imageValue : undefined;
 
     if (!name || !itemCategory || !location || !date || !description) {
       setNotice("Please complete all required fields.");
+      return;
+    }
+    if (image && image.size > 5 * 1024 * 1024) {
+      setNotice("Please choose an image that is 5 MB or smaller.");
       return;
     }
 
@@ -208,6 +221,7 @@ export default function CampusApp({ email, token, role, onSignOut }: Props) {
               : itemCategory === "Accessories"
                 ? "🧴"
                 : "📦",
+      ...(image ? { image } : {}),
     };
     try {
       const created = await itemRepository.create(newItem, token);
@@ -532,10 +546,10 @@ function ReportForm({ type, onSubmit, onCancel }: {
           </label>
           <label className="app-field wide-field"><span>Photo (optional)</span>
             <span className="file-upload">
-              <input type="file" accept="image/*" onChange={(event) => setPhotoName(event.target.files?.[0]?.name ?? "")} />
+              <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" onChange={(event) => setPhotoName(event.target.files?.[0]?.name ?? "")} />
               <span className="upload-icon" aria-hidden="true">↑</span>
               <strong>{photoName || "Choose an image from your device"}</strong>
-              <small>Preview only; uploads are not saved in this demo.</small>
+              <small>Optional. JPEG, PNG, GIF, or WEBP up to 5 MB.</small>
             </span>
           </label>
         </div>
@@ -553,12 +567,27 @@ function ReportForm({ type, onSubmit, onCancel }: {
 
 function ItemDetails({ item, onBack }: { item: CampusItem; onBack: () => void; }) {
   const [contactMessage, setContactMessage] = useState("");
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = item.image_path
+    ? /^https?:\/\//i.test(item.image_path)
+      ? item.image_path
+      : `${API_URL}/${item.image_path.replace(/^\/+/, "")}`
+    : null;
   return (
     <section className="details-page">
       <button className="back-button" type="button" onClick={onBack}>← Back to {item.type} items</button>
       <div className="details-card">
-        <div className={`details-art ${item.type}`} aria-hidden="true">
-          <span>{item.icon}</span>
+        <div className={`details-art ${item.type}`}>
+          {imageUrl && !imageFailed ? (
+            <img
+              className="details-photo"
+              src={imageUrl}
+              alt={`Uploaded photo of ${item.name}`}
+              onError={() => setImageFailed(true)}
+            />
+          ) : (
+            <span aria-hidden="true">{item.icon}</span>
+          )}
           <span className="details-art-caption">CAMPUSFIND REPORT</span>
         </div>
         <div className="details-content">
