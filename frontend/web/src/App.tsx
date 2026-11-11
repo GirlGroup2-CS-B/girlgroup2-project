@@ -6,7 +6,7 @@ import { API_URL } from "./apiConfig";
 
 type AuthResponse = {
   access_token?: string;
-  role?: AccountRole;
+  role?: string;
   detail?: string | { msg: string }[];
   error?: string | { msg: string }[];
   message?: string;
@@ -105,7 +105,14 @@ export default function App() {
             "The login response did not include an access token.",
           );
         }
-        if (result.role !== "user" && result.role !== "admin") {
+        const sessionRole = result.role === "admin"
+          ? "admin"
+          : result.role === "student"
+            || result.role === "reviewer"
+            || result.role === "user"
+            ? "user"
+            : null;
+        if (!sessionRole) {
           throw new Error(
             "The login response did not include a valid account role.",
           );
@@ -114,7 +121,7 @@ export default function App() {
         setSession({
           email: email.trim().toLowerCase(),
           token: result.access_token,
-          role: result.role,
+          role: sessionRole,
         });
 
         setMessage("You are signed in.");

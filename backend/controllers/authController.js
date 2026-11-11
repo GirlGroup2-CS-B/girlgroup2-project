@@ -99,8 +99,7 @@ const register = async (req, res) => {
  *   { email, password }
  * 
  * Returns:
- *   { access_token, role }
- *   - role is 'user' for students, 'admin' for admins
+ *   { access_token, role } where role matches the user's database record
  */
 const login = async (req, res) => {
   try {
@@ -132,8 +131,7 @@ const login = async (req, res) => {
     }
 
     // --- Generate JWT ---
-    // Map 'student' role to 'user' for the client, keep 'admin' as-is
-    const clientRole = user.role === 'admin' ? 'admin' : 'user';
+    const role = user.role;
     if (!process.env.JWT_SECRET) {
       console.error('Login failed: JWT_SECRET is not configured.');
       return res.status(500).json({
@@ -144,7 +142,7 @@ const login = async (req, res) => {
     const tokenPayload = {
       user_id: user.user_id,
       email: user.email,
-      role: clientRole
+      role
     };
 
     const access_token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
@@ -155,7 +153,7 @@ const login = async (req, res) => {
     return res.status(200).json({
       message: 'Login successful.',
       access_token,
-      role: clientRole
+      role
     });
 
   } catch (err) {

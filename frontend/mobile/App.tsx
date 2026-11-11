@@ -138,7 +138,7 @@ type ApiOptions = {
 
 type AuthResponse = {
   access_token?: string;
-  role?: AccountRole;
+  role?: string;
   error?: string;
   detail?: string;
   message?: string;

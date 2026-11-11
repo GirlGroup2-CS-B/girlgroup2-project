@@ -86,7 +86,26 @@ module.exports = {
         summary: 'Sign in and receive a JWT',
         requestBody: jsonRequest('LoginRequest'),
         responses: {
-          200: { description: 'Signed in successfully.' },
+          200: {
+            description: 'Signed in successfully. The role matches the value stored for the user.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['message', 'access_token', 'role'],
+                  properties: {
+                    message: { type: 'string', example: 'Login successful.' },
+                    access_token: { type: 'string' },
+                    role: {
+                      type: 'string',
+                      enum: ['student', 'reviewer', 'admin'],
+                      example: 'student'
+                    }
+                  }
+                }
+              }
+            }
+          },
           400: errorResponse,
           401: { description: 'Invalid email or password.' },
           403: { description: 'Account is deactivated.' },
