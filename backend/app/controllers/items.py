@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import FoundItem, LostItem, User
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
@@ -81,6 +82,7 @@ def main_feed(db: Session = Depends(get_db)) -> list[ItemFeedResponse]:
 def delete_item(
     item_type: Literal["lost", "found"],
     item_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> None:
     item_model = LostItem if item_type == "lost" else FoundItem
@@ -89,6 +91,11 @@ def delete_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found",
+        )
+    if item.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the item owner can delete this item",
         )
 
     item.is_deleted = True
