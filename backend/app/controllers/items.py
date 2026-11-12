@@ -5,11 +5,13 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import FoundItem, LostItem, User
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
@@ -37,6 +39,74 @@ class ItemUploadResponse(BaseModel):
     location: str
     date_reported: datetime
     image_path: str
+
+
+class ItemFeedResponse(ItemUploadResponse):
+    pass
+
+
+def get_main_feed(db: Session) -> list[ItemFeedResponse]:
+    feed: list[ItemFeedResponse] = []
+    for item_type, item_model in (("lost", LostItem), ("found", FoundItem)):
+        items = db.scalars(
+            select(item_model)
+            .where(item_model.is_deleted.is_(False))
+            .order_by(item_model.date_reported.desc(), item_model.id.desc())
+        )
+        feed.extend(
+            ItemFeedResponse(
+                id=item.id,
+                item_type=item_type,
+                user_id=item.user_id,
+                title=item.title,
+                description=item.description,
+                location=item.location,
+                date_reported=item.date_reported,
+                image_path=item.image_path,
+            )
+            for item in items
+        )
+    return sorted(
+        feed,
+        key=lambda item: (item.date_reported, item.id),
+        reverse=True,
+    )
+
+
+@router.get("/feed", response_model=list[ItemFeedResponse])
+def main_feed(db: Session = Depends(get_db)) -> list[ItemFeedResponse]:
+    return get_main_feed(db)
+
+
+@router.delete("/{item_type}/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_item(
+    item_type: Literal["lost", "found"],
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    item_model = LostItem if item_type == "lost" else FoundItem
+    item = db.scalar(select(item_model).where(item_model.id == item_id))
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item not found",
+        )
+    if item.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the item owner can delete this item",
+        )
+
+    item.is_deleted = True
+    try:
+        db.commit()
+    except SQLAlchemyError as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete item",
+        ) from error
 
 
 @router.post(
