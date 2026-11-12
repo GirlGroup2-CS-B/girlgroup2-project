@@ -3,7 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.engine import URL
+from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -39,22 +39,26 @@ class Base(DeclarativeBase):
     pass
 
 
-def init_db() -> None:
-    from .item import FoundItem, LostItem
-    from .user import User
-
-    Base.metadata.create_all(bind=engine)
-    inspector = inspect(engine)
-    for table_name in (LostItem.__tablename__, FoundItem.__tablename__):
+def ensure_item_soft_delete_columns(database_engine: Engine = engine) -> None:
+    inspector = inspect(database_engine)
+    for table_name in ("lost_items", "found_items"):
         columns = {column["name"] for column in inspector.get_columns(table_name)}
         if "is_deleted" not in columns:
-            with engine.begin() as connection:
+            with database_engine.begin() as connection:
                 connection.execute(
                     text(
                         f"ALTER TABLE {table_name} "
                         "ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE"
                     )
                 )
+
+
+def init_db() -> None:
+    from .item import FoundItem, LostItem
+    from .user import User
+
+    Base.metadata.create_all(bind=engine)
+    ensure_item_soft_delete_columns(engine)
 
 
 def get_db() -> Generator[Session, None, None]:
