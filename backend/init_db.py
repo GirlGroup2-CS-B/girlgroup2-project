@@ -1,6 +1,9 @@
-from app.models.database import init_db
+from app.models import DATABASE_PATH, init_db
 
 
 if __name__ == "__main__":
     init_db()
-    print("SQLite database initialized.")
+    if DATABASE_PATH is None:
+        print("Database initialized.")
+    else:
+        print(f"SQLite database initialized at {DATABASE_PATH}")

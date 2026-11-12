@@ -1,17 +1,38 @@
+import os
+from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
-DATABASE_PATH = Path(__file__).resolve().parents[3] / "Database" / "backend_users.db"
-DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
+_DEFAULT_DATABASE_PATH = (
+    Path(__file__).resolve().parents[3] / "Database" / "backend_users.db"
 )
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    URL.create(
+        "sqlite",
+        database=_DEFAULT_DATABASE_PATH.as_posix(),
+    ).render_as_string(hide_password=False),
+)
+database_url = DATABASE_URL
+
+engine_options: dict[str, object] = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_options["connect_args"] = {"check_same_thread": False}
+    if DATABASE_URL in ("sqlite://", "sqlite:///:memory:"):
+        engine_options["poolclass"] = StaticPool
+
+engine = create_engine(DATABASE_URL, **engine_options)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+DATABASE_PATH = (
+    Path(engine.url.database)
+    if engine.dialect.name == "sqlite" and engine.url.database
+    else None
+)
 
 
 class Base(DeclarativeBase):
@@ -31,6 +52,11 @@ def init_db() -> None:
                 connection.execute(
                     text(
                         f"ALTER TABLE {table_name} "
-                        "ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0"
+                        "ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE"
                     )
                 )
+
+
+def get_db() -> Generator[Session, None, None]:
+    with SessionLocal() as session:
+        yield session
