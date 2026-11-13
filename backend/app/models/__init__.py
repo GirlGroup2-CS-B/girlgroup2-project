@@ -1,5 +1,5 @@
-from .database import Base, DATABASE_PATH, DATABASE_URL, SessionLocal, engine
-from .items import FoundItem, LostItem
+from .database import Base, DATABASE_PATH, DATABASE_URL, SessionLocal, engine, init_db
+from .item import FoundItem, LostItem
 from .user import User
 
 __all__ = [
@@ -11,4 +11,5 @@ __all__ = [
     "SessionLocal",
     "User",
     "engine",
+    "init_db",
 ]

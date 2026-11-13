@@ -1,10 +1,9 @@
-from app.models import Base, DATABASE_PATH, engine
-
-
-def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+from app.models import DATABASE_PATH, init_db
 
 
 if __name__ == "__main__":
     init_db()
-    print(f"SQLite database initialized at {DATABASE_PATH}")
+    if DATABASE_PATH is None:
+        print("Database initialized.")
+    else:
+        print(f"SQLite database initialized at {DATABASE_PATH}")

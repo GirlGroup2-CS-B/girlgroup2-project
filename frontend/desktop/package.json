@@ -1,0 +1,48 @@
+{
+  "name": "campusfind-desktop",
+  "version": "1.0.0",
+  "description": "CampusFind Desktop – Electron wrapper for the CampusFind lost-and-found system",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build:web": "npm --prefix ../web run build",
+    "package": "electron-builder --win --dir",
+    "dist": "electron-builder --win"
+  },
+  "author": "CampusFind Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0"
+  },
+  "build": {
+    "appId": "com.campusfind.desktop",
+    "productName": "CampusFind",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web-dist"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": null,
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "CampusFind"
+    }
+  }
+}
